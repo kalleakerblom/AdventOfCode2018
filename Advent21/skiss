@@ -1,0 +1,11 @@
+bori 5 65536 1
+seti 10678677 3 5
+bani 1 255 4
+addr 5 4 5
+bani 5 16777215 5
+muli 5 65899 5
+bani 5 16777215 5
+gtir 256 1 4
+
+ 4
+addr 5 (bani (bori 5 65536) 255) 5

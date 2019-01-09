@@ -1,0 +1,8 @@
+[package]
+name = "Advent7"
+version = "0.1.0"
+authors = ["Kalle"]
+edition = "2018"
+
+[dependencies]
+text_io = "*"
