@@ -45,40 +45,23 @@ fn find_target(
     targets: &HashMap<Id, Group>,
     already_targetted: &HashSet<Id>,
 ) -> Option<Id> {
-    let available_targets = targets.iter().filter(|(id, group)| {
-        targetter.team != group.team
-            && !already_targetted.contains(&id)
-            && !group.immune.contains(&targetter.atk_type)
-    });
-    let mut weak_target_order: BinaryHeap<TargetOrder> = BinaryHeap::new();
-    let mut normal_target_order: BinaryHeap<TargetOrder> = BinaryHeap::new();
-    for (target_id, target) in available_targets {
-        if target.weakness.contains(&targetter.atk_type) {
-            weak_target_order.push(TargetOrder(*target_id, target.power(), target.init));
-        } else {
-            normal_target_order.push(TargetOrder(*target_id, target.power(), target.init));
-        }
-    }
-    if let Some(TargetOrder(weak_id, _, _)) = weak_target_order.pop() {
-        return Some(weak_id);
-    }
-    if let Some(TargetOrder(id, _, _)) = normal_target_order.pop() {
-        return Some(id);
-    }
-    None
+    targets
+        .iter()
+        .filter(|(id, group)| {
+            targetter.team != group.team
+                && !already_targetted.contains(&id)
+                && !group.immune.contains(&targetter.atk_type)
+        })
+        .max_by_key(|(_, target)| (calc_dmg(targetter, target), target.power(), target.init))
+        .map(|(id, _)| *id)
 }
 
-fn calc_kills(attacker: &Group, target: &Group) -> usize {
-    if attacker.units == 0 {
-        return 0;
-    }
-    let multiplier = if target.weakness.contains(&attacker.atk_type) {
-        2
+fn calc_dmg(attacker: &Group, target: &Group) -> usize {
+    if target.weakness.contains(&attacker.atk_type) {
+        2 * attacker.power()
     } else {
-        1
-    };
-    let kills = multiplier * attacker.power() / target.hp;
-    kills
+        attacker.power()
+    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -169,7 +152,8 @@ fn main() {
                 let ref attacker = groups[&atk_id];
                 if let Some(target_id) = target_map.get(&atk_id) {
                     let ref target = groups[&target_id];
-                    let kills = calc_kills(&attacker, &target);
+                    let dmg = calc_dmg(&attacker, &target);
+                    let kills = dmg / groups[&target_id].hp;
                     kill_count += kills;
                     let target = groups.get_mut(&target_id).expect("target missing");
                     target.units = target.units.saturating_sub(kills);
