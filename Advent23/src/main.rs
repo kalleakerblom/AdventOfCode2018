@@ -33,8 +33,63 @@ fn main() {
         .filter(|Bot(pos, _)| pos.dist(large_pos) < r)
         .count();
     println!("ans1: {}", count);
-    let mut current_pos = Pos(11382548, 29059452, 39808797);
+    let mut current_pos = Pos(0, 0, 0);
 
+    let steps = vec![10000, 1000, 100, 10];
+    // minimize distance to spheres, hopefully close to answer
+    let mut old_pos = current_pos;
+    let mut current_sum = sum_of_sphere_dist(&current_pos, &bots);
+    for step in steps {
+        loop {
+            let Pos(cx, cy, cz) = current_pos;
+            let xp = Pos(cx + step, cy, cz);
+            let xn = Pos(cx - step, cy, cz);
+            let yp = Pos(cx, cy + step, cz);
+            let yn = Pos(cx, cy - step, cz);
+            let zp = Pos(cx, cy, cz + step);
+            let zn = Pos(cx, cy, cz - step);
+            // move in x?
+            let xp_sum = sum_of_sphere_dist(&xp, &bots);
+            let xn_sum = sum_of_sphere_dist(&xn, &bots);
+            if xp_sum < xn_sum {
+                if xp_sum < current_sum {
+                    current_pos.0 += step;
+                    current_sum = xp_sum;
+                }
+            } else if xn_sum < current_sum {
+                current_pos.0 -= step;
+                current_sum = xn_sum;
+            }
+            // move in y?
+            let yp_sum = sum_of_sphere_dist(&yp, &bots);
+            let yn_sum = sum_of_sphere_dist(&yn, &bots);
+            if yp_sum < yn_sum || (yp_sum == yn_sum && yp.1.abs() < yn.1.abs()) {
+                if yp_sum < current_sum {
+                    current_pos.1 += step;
+                    current_sum = yp_sum;
+                }
+            } else if yn_sum < current_sum {
+                current_pos.1 -= step;
+                current_sum = yn_sum;
+            }
+            // move in z?
+            let zp_sum = sum_of_sphere_dist(&zp, &bots);
+            let zn_sum = sum_of_sphere_dist(&zn, &bots);
+            if zp_sum < zn_sum {
+                if zp_sum < current_sum {
+                    current_pos.2 += step;
+                    current_sum = zp_sum;
+                }
+            } else if zn_sum < current_sum {
+                current_pos.2 -= step;
+                current_sum = zn_sum;
+            }
+            if old_pos == current_pos {
+                break;
+            }
+            old_pos = current_pos;
+        }
+    } // next step length
     let window = 10;
     let mut max = (current_pos, 0);
     for x in 11382548 - window..11382548 + window {
@@ -50,68 +105,11 @@ fn main() {
             }
         }
     }
-    println!("Ans2 v2:{}", (max.0).0 + (max.0).1 + (max.0).2);
-    return;
-    let mut old_pos = current_pos;
-    let mut current_sum = sum_of_sphere_dist(&current_pos, &bots);
-    let step = 1;
-    loop {
-        println!("{:?}", current_pos);
-        let Pos(cx, cy, cz) = current_pos;
-        let xp = Pos(cx + step, cy, cz);
-        let xn = Pos(cx - step, cy, cz);
-        let yp = Pos(cx, cy + step, cz);
-        let yn = Pos(cx, cy - step, cz);
-        let zp = Pos(cx, cy, cz + step);
-        let zn = Pos(cx, cy, cz - step);
-        // move in x?
-        let xp_sum = sum_of_sphere_dist(&xp, &bots);
-        let xn_sum = sum_of_sphere_dist(&xn, &bots);
-        if xp_sum < xn_sum {
-            if xp_sum < current_sum {
-                current_pos.0 += step;
-                current_sum = xp_sum;
-            }
-        } else if xn_sum < current_sum {
-            current_pos.0 -= step;
-            current_sum = xn_sum;
-        }
-        // move in y?
-        let yp_sum = sum_of_sphere_dist(&yp, &bots);
-        let yn_sum = sum_of_sphere_dist(&yn, &bots);
-        if yp_sum < yn_sum || (yp_sum == yn_sum && yp.1.abs() < yn.1.abs()) {
-            if yp_sum < current_sum {
-                current_pos.1 += step;
-                current_sum = yp_sum;
-            }
-        } else if yn_sum < current_sum {
-            current_pos.1 -= step;
-            current_sum = yn_sum;
-        }
-
-        // move in z?
-        let zp_sum = sum_of_sphere_dist(&zp, &bots);
-        let zn_sum = sum_of_sphere_dist(&zn, &bots);
-        if zp_sum < zn_sum {
-            if zp_sum < current_sum {
-                current_pos.2 += step;
-                current_sum = zp_sum;
-            }
-        } else if zn_sum < current_sum {
-            current_pos.2 -= step;
-            current_sum = zn_sum;
-        }
-        if old_pos == current_pos {
-            println!("stable pos: {:?}", current_pos);
-            // 80250821 too high
-            // 80250790 too low
-            // 80250792 wrong
-            // 80250793
-            println!("ans2: {:?}", current_pos.0 + current_pos.1 + current_pos.2);
-            break;
-        }
-        old_pos = current_pos;
-    }
+    println!(
+        "distance between optimized pos and true pos = {}",
+        max.0.dist(&current_pos)
+    );
+    println!("Ans2: {}", max.0.dist(&Pos(0, 0, 0)));
 }
 fn sum_of_sphere_dist(pos: &Pos, bots: &Vec<Bot>) -> i64 {
     bots.iter().map(|b| distance_to_sphere(pos, b)).sum::<i64>()
