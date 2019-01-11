@@ -14,7 +14,10 @@ impl Pos {
     }
 }
 #[derive(Debug)]
-struct Bot(Pos, i64);
+struct Bot {
+    p: Pos,
+    r: i64,
+}
 fn main() {
     let f = File::open("input").expect("loading failed");
     let buf = BufReader::new(f);
@@ -24,14 +27,14 @@ fn main() {
         let (x, y, z, r): (i64, i64, i64, i64);
         let l = l.unwrap();
         scan!(l.bytes()=>"pos=<{},{},{}>, r={}",x,y,z,r);
-        bots.push(Bot(Pos(x, y, z), r));
+        bots.push(Bot { p: Pos(x, y, z), r });
     }
     // find bot with largest r
-    let &Bot(ref large_pos, r) = bots.iter().max_by_key(|&Bot(_, r)| r).unwrap();
-    let count = bots
-        .iter()
-        .filter(|Bot(pos, _)| pos.dist(large_pos) < r)
-        .count();
+    let &Bot {
+        p: ref large_pos,
+        r,
+    } = bots.iter().max_by_key(|bot| bot.r).unwrap();
+    let count = bots.iter().filter(|bot| bot.p.dist(large_pos) < r).count();
     println!("ans1: {}", count);
     let mut current_pos = Pos(0, 0, 0);
 
@@ -115,8 +118,8 @@ fn sum_of_sphere_dist(pos: &Pos, bots: &Vec<Bot>) -> i64 {
     bots.iter().map(|b| distance_to_sphere(pos, b)).sum::<i64>()
 }
 fn distance_to_sphere(pos: &Pos, bot: &Bot) -> i64 {
-    if pos.dist(&bot.0) < bot.1 {
+    if pos.dist(&bot.p) < bot.r {
         return 0;
     }
-    i64::abs(pos.dist(&bot.0) - bot.1)
+    i64::abs(pos.dist(&bot.p) - bot.r)
 }
