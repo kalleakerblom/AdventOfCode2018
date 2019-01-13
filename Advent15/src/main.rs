@@ -26,7 +26,7 @@ fn main() {
     let f = File::open("input").expect("loading failed");
     let buf = BufReader::new(f);
     let mut map = HashMap::new();
-    let mut entities = HashMap::new();
+    let mut start_entities = HashMap::new();
     for (row, line) in buf.lines().enumerate() {
         let line = line.unwrap();
         for (col, ch) in line.chars().enumerate() {
@@ -39,7 +39,7 @@ fn main() {
                 }
                 'G' => {
                     map.insert(Pos(col, row), Tile::Floor);
-                    entities.insert(
+                    start_entities.insert(
                         Pos(col, row),
                         Entity {
                             team: Team::Goblin,
@@ -49,7 +49,7 @@ fn main() {
                 }
                 'E' => {
                     map.insert(Pos(col, row), Tile::Floor);
-                    entities.insert(
+                    start_entities.insert(
                         Pos(col, row),
                         Entity {
                             team: Team::Elf,
@@ -62,16 +62,16 @@ fn main() {
         }
     }
     // Finished parsing
-    let mut entities_copy = entities.clone();
     'boost: for elf_boost in 1.. {
-        println!("boost:{}", elf_boost);
-        entities = entities_copy.clone();
+        println!("boost: {}", elf_boost);
+        let mut entities = start_entities.clone();
         let mut turn_count = 0;
-        'outer: loop {
+        'turn: loop {
             let mut action_order: Vec<Pos> = entities.keys().cloned().collect();
-            sort(&mut action_order);
+            action_order.sort_by_key(|Pos(x, y)| (*y, *x));
             for ent_pos in action_order {
                 if !entities.contains_key(&ent_pos) {
+                    // entity was killed before it's turn
                     continue;
                 }
                 let current_team = entities[&ent_pos].team;
@@ -82,9 +82,10 @@ fn main() {
                     .cloned()
                     .collect();
                 if targets.is_empty() {
-                    break 'outer;
+                    break 'turn;
                 }
                 let mut searching: HashSet<Pos> = HashSet::new();
+                // Assemble set of tiles next to enemy and empty
                 searching.extend(
                     targets
                         .iter()
@@ -109,8 +110,7 @@ fn main() {
                 if fight_positions.is_empty() {
                     continue;
                 }
-                sort(&mut fight_positions);
-                fight_positions.sort_by_key(|pos| entities[&pos].hp);
+                fight_positions.sort_unstable_by_key(|pos| (entities[&pos].hp, pos.1, pos.0));
                 let attacked = entities.get_mut(fight_positions.first().unwrap()).unwrap();
                 let dmg = if current_team == Team::Elf {
                     3 + elf_boost
@@ -119,38 +119,29 @@ fn main() {
                 };
                 if attacked.hp <= dmg {
                     let dead = entities.remove(fight_positions.first().unwrap()).unwrap();
+                    // no elves are allowed to die, try higher boost
                     if dead.team == Team::Elf {
                         continue 'boost;
                     }
                 } else {
                     attacked.hp -= dmg;
                 }
-            } // entities act in turn order
-              // print_board(&map, &entities, 10, 10);
+            }
             turn_count += 1;
         } //game loop
         let hp_sum: usize = entities.iter().map(|(_, e)| e.hp).sum();
-        // 47678 too high
-        // 46140 too low
-        // 47585 wrong
-        // 47492 wrong
-        // 46784
-        println!("turn:{}", turn_count);
-        println!("hp_sum:{}", hp_sum);
-        println!("boost:{} outcome: {}", elf_boost, turn_count * hp_sum);
+
+        println!("boost: {} outcome: {}", elf_boost, turn_count * hp_sum);
         break;
     } //next boost
 }
 fn pos_empty(pos: Pos, map: &HashMap<Pos, Tile>, ents: &HashMap<Pos, Entity>) -> bool {
     map.get(&pos) == Some(&Tile::Floor) && !ents.contains_key(&pos)
 }
-fn sort(coords: &mut Vec<Pos>) {
-    coords.sort_unstable_by_key(|Pos(x, _)| *x);
-    coords.sort_by_key(|Pos(_, y)| *y);
-}
+
 fn get_neighbors(pos: &Pos) -> Vec<Pos> {
     let Pos(x, y) = pos;
-    let mut neighbors = vec![
+    let neighbors = vec![
         Pos(*x, *y - 1),
         Pos(*x - 1, *y),
         Pos(*x + 1, *y),
@@ -158,9 +149,7 @@ fn get_neighbors(pos: &Pos) -> Vec<Pos> {
     ];
     neighbors
 }
-fn action(pos: Pos, map: &HashMap<Pos, Tile>, ents: &mut HashMap<Pos, Entity>) -> Pos {
-    unimplemented!()
-}
+
 fn search(
     pos: Pos,
     map: &HashMap<Pos, Tile>,
@@ -195,11 +184,12 @@ fn search(
         // no enemy reachable
         None
     } else {
-        sort(&mut nearest_searches);
+        nearest_searches.sort_by_key(|Pos(x, y)| (*y, *x));
         let selected_destination = *nearest_searches.first().unwrap();
         Some(retrace_to_start(&pos, &selected_destination, &came_from))
     }
 }
+
 fn retrace_to_start(start: &Pos, end: &Pos, came_from: &HashMap<Pos, Option<Pos>>) -> Pos {
     let mut current = *end;
     while let Some(next) = came_from[&current] {
@@ -209,29 +199,4 @@ fn retrace_to_start(start: &Pos, end: &Pos, came_from: &HashMap<Pos, Option<Pos>
         current = next;
     }
     current
-}
-fn print_board(
-    map: &HashMap<Pos, Tile>,
-    entities: &HashMap<Pos, Entity>,
-    length: usize,
-    width: usize,
-) {
-    for y in 0..length {
-        for x in 0..width {
-            let pos = Pos(x, y);
-            if map.contains_key(&pos) && map[&pos] == Tile::Floor {
-                if !entities.contains_key(&pos) {
-                    print!(".");
-                } else {
-                    match entities[&pos].team {
-                        Team::Elf => print!("E"),
-                        Team::Goblin => print!("G"),
-                    }
-                }
-            } else {
-                print!("#")
-            }
-        }
-        println!("");
-    }
 }
