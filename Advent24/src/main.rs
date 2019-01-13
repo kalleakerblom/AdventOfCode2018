@@ -101,7 +101,7 @@ fn main() {
                     .iter()
                     .map(|(id, group)| (*id, group.power(), group.init)),
             );
-            order.sort_unstable_by_key(|(_, pow, init)| Reverse((*pow, *init)));
+            order.sort_unstable_by_key(|(_, power, initiative)| Reverse((*power, *initiative)));
             let mut target_map = HashMap::new();
             let mut already_targetted = HashSet::new();
             for (targetter_id, _, _) in &order {
@@ -112,7 +112,7 @@ fn main() {
                 }
             }
             //attack phase
-            order.sort_unstable_by_key(|(_id, _pow, init)| Reverse(*init));
+            order.sort_unstable_by_key(|(_id, _, initiative)| Reverse(*initiative));
             let mut kill_count = 0;
             for (atk_id, _, _) in order {
                 let attacker = &groups[&atk_id];
@@ -131,7 +131,8 @@ fn main() {
                 continue 'boost;
             }
             groups.retain(|_, g| g.units > 0);
-        } //next round of fight
+        }
+        // fight over, figure out who won
         if groups.iter().any(|(_, g)| g.team == Team::Infect) {
             println!(
                 "Infection wins!: {} , boost = {}",
