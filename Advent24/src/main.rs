@@ -181,13 +181,11 @@ fn parse_immune_weak(input: &str) -> (Vec<Type>, Vec<Type>) {
         return (immune, weak);
     }
     if let Some(i) = input.find(';') {
-        let split_immune_weak: Vec<&str> = input.split(';').collect();
-        let (i1, w1) = parse_immune_weak(split_immune_weak[0]);
-        let (i2, w2) = parse_immune_weak(split_immune_weak[1]);
-        immune.extend(i1);
-        immune.extend(i2);
-        weak.extend(w1);
-        weak.extend(w2);
+        let (imm_str, weak_str) = input.split_at(i);
+        let (i, _) = parse_immune_weak(imm_str);
+        let (_, w) = parse_immune_weak(weak_str.trim_left_matches(';'));
+        immune.extend(i);
+        weak.extend(w);
     } else {
         let split: Vec<&str> = input.split_whitespace().collect();
         let types: Vec<Type> = split[2..]
