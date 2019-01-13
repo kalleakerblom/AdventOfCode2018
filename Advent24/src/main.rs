@@ -1,9 +1,7 @@
 #![allow(dead_code)]
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::cmp::Reverse;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::prelude::*;
-use std::io::Read;
 use std::io::{BufRead, BufReader};
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -64,37 +62,6 @@ fn calc_dmg(attacker: &Group, target: &Group) -> usize {
     }
 }
 
-#[derive(PartialEq, Eq)]
-struct TargetOrder(Id, usize, usize);
-
-impl PartialOrd for TargetOrder {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for TargetOrder {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.1 > other.1 || (self.1 == other.1 && self.2 > other.2) {
-            return Ordering::Greater;
-        }
-        Ordering::Less
-    }
-}
-
-#[derive(PartialEq, Eq)]
-struct AttackOrder(Id, usize);
-
-impl PartialOrd for AttackOrder {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for AttackOrder {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.1.cmp(&other.1)
-    }
-}
-
 fn main() {
     let f = File::open("input").expect("loading failed");
     let buf = BufReader::new(f);
@@ -115,43 +82,42 @@ fn main() {
             .enumerate()
             .map(|(i, txt)| (Id(i + 10), parse_group(&txt, Team::Infect))),
     );
+    // try boosts to immune team until they win
     'boost: for boost in 0.. {
         let mut groups = start_groups.clone();
+        // add atk boost to immune system team
         groups
             .iter_mut()
             .filter(|(_, g)| g.team == Team::Immune)
             .for_each(|(_, group)| group.atk += boost);
+        // fight loop until one team wins or stuck in tie
         while groups.iter().any(|(_, g)| g.team == Team::Immune)
             && groups.iter().any(|(_, g)| g.team == Team::Infect)
         {
             //target phase
-            let mut target_order = BinaryHeap::new();
-            target_order.extend(
+            let mut order = Vec::with_capacity(groups.len());
+            order.extend(
                 groups
                     .iter()
-                    .map(|(id, g)| TargetOrder(*id, g.power(), g.init)),
+                    .map(|(id, group)| (*id, group.power(), group.init)),
             );
+            order.sort_unstable_by_key(|(_, pow, init)| Reverse((*pow, *init)));
             let mut target_map = HashMap::new();
             let mut already_targetted = HashSet::new();
-            while let Some(TargetOrder(targetter_id, _, _)) = target_order.pop() {
-                let ref targetter = groups[&targetter_id];
+            for (targetter_id, _, _) in &order {
+                let targetter = &groups[&targetter_id];
                 if let Some(target_id) = find_target(targetter, &groups, &already_targetted) {
-                    target_map.insert(targetter_id, target_id);
+                    target_map.insert(*targetter_id, target_id);
                     already_targetted.insert(target_id);
                 }
             }
             //attack phase
-            let mut attack_order = BinaryHeap::new();
-            attack_order.extend(
-                groups
-                    .iter()
-                    .map(|(id, group)| AttackOrder(*id, group.init)),
-            );
+            order.sort_unstable_by_key(|(_id, _pow, init)| Reverse(*init));
             let mut kill_count = 0;
-            while let Some(AttackOrder(atk_id, _)) = attack_order.pop() {
-                let ref attacker = groups[&atk_id];
+            for (atk_id, _, _) in order {
+                let attacker = &groups[&atk_id];
                 if let Some(target_id) = target_map.get(&atk_id) {
-                    let ref target = groups[&target_id];
+                    let target = &groups[&target_id];
                     let dmg = calc_dmg(&attacker, &target);
                     let kills = dmg / groups[&target_id].hp;
                     kill_count += kills;
@@ -159,6 +125,7 @@ fn main() {
                     target.units = target.units.saturating_sub(kills);
                 }
             }
+            // cleanup after attacks
             if kill_count == 0 {
                 println!("tie!, boost = {}", boost);
                 continue 'boost;
