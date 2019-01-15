@@ -10,38 +10,51 @@ fn calc_grid_val(x: i32, y: i32, serial: i32) -> i32 {
     power -= 5;
     power
 }
-fn main() {
-    assert_eq!(calc_grid_val(3, 5, 8), 4);
-    assert_eq!(calc_grid_val(122, 79, 57), -5);
-    assert_eq!(calc_grid_val(217, 196, 39), 0);
-    assert_eq!(calc_grid_val(101, 153, 71), 4);
-
-    let serial = 6548;
-    let mut grid = HashMap::with_capacity(300 * 300);
-    for y in 1..=300 {
-        for x in 1..=300 {
-            grid.insert((x, y), calc_grid_val(x, y, serial));
+fn calc_integral_image(serial: i32) -> [[i32; 300]; 300] {
+    let mut ii = [[0; 300]; 300];
+    for y in 0..300 {
+        let mut row_sum = 0;
+        for x in 0..300 {
+            let current_cell = calc_grid_val(1 + x as i32, 1 + y as i32, serial);
+            row_sum += current_cell;
+            let above_sum = if y == 0 { 0 } else { ii[y - 1][x] };
+            ii[y][x] = row_sum + above_sum;
         }
     }
-    let mut grid_values = HashMap::new();
-    for x in 1..300 {
-        for y in 1..300 {
+    ii
+}
+fn sum_from_integral_image(ii: &[[i32; 300]; 300], upper_left: (usize, usize), size: usize) -> i32 {
+    let (x, y) = upper_left;
+    let mut sum = ii[y + size - 1][x + size - 1];
+    if size == 1 {
+        return sum;
+    }
+    if x > 0 {
+        sum -= ii[y + size - 1][x - 1];
+    }
+    if y > 0 {
+        sum -= ii[y - 1][x + size - 1];
+    }
+    if x > 0 && y > 0 {
+        sum += ii[y - 1][x - 1];
+    }
+    sum
+}
+fn main() {
+    let serial = 6548;
+    let integral_img = calc_integral_image(serial);
+    let mut max = (i32::min_value(), (0, 0, 0));
+    for x in 0..300 {
+        for y in 0..300 {
             //determine size range
             let max_size = 300 - cmp::max(x, y);
-            grid_values.insert((x, y, 1), grid[&(x, y)]);
             for size in 2..max_size {
-                let mut sum = grid_values[&(x, y, size - 1)];
-                for _x in x..x + size {
-                    sum += grid[&(_x, y + size - 1)];
+                let sum = sum_from_integral_image(&integral_img, (x, y), size);
+                if sum > max.0 {
+                    max = (sum, (x + 1, y + 1, size));
                 }
-                for _y in y..y + size - 1 {
-                    sum += grid[&(x + size - 1, _y)];
-                }
-                grid_values.insert((x, y, size), sum);
             }
-            println!("{:?}", (x, y));
         }
     }
-    let ans2 = grid_values.iter().max_by_key(|p| p.1);
-    println!("{:?}", ans2);
+    println!("ans2: {:?}", max.1);
 }
