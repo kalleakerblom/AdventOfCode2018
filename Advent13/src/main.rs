@@ -62,7 +62,6 @@ fn parse_row(
     map: &mut HashMap<(usize, usize), Tile>,
     cars: &mut HashMap<(usize, usize), Car>,
 ) {
-    // FIXME: parse all the symbols!
     for (col, c) in s.chars().enumerate() {
         match c {
             '/' => {
@@ -198,7 +197,7 @@ fn main() {
         let mut buf = String::new();
         println!("{}", cars.len());
         if let Some(pos) = tick(&mut cars, &map) {
-            println!("ANS1:{:?}", pos);
+            println!("ANS: {:?}", pos);
             break;
         }
     }
