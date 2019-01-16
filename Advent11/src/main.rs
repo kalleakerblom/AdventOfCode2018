@@ -1,5 +1,4 @@
 use std::cmp;
-use std::collections::{HashMap, HashSet};
 
 fn calc_grid_val(x: i32, y: i32, serial: i32) -> i32 {
     let rack_id = x + 10;
@@ -48,7 +47,7 @@ fn main() {
         for y in 0..300 {
             //determine size range
             let max_size = 300 - cmp::max(x, y);
-            for size in 2..max_size {
+            for size in 1..max_size {
                 let sum = sum_from_integral_image(&integral_img, (x, y), size);
                 if sum > max.0 {
                     max = (sum, (x + 1, y + 1, size));
