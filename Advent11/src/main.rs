@@ -25,10 +25,10 @@ fn calc_integral_image(serial: i32) -> [[i32; 300]; 300] {
 }
 fn sum_from_integral_image(ii: &[[i32; 300]; 300], upper_left: (usize, usize), size: usize) -> i32 {
     let (x, y) = upper_left;
-    let mut sum = ii[y + size - 1][x + size - 1];
-    if size == 1 {
-        return sum;
+    if size == 0 {
+        return 0;
     }
+    let mut sum = ii[y + size - 1][x + size - 1];
     if x > 0 {
         sum -= ii[y + size - 1][x - 1];
     }
